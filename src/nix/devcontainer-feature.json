@@ -1,0 +1,10 @@
+{
+    "name": "Nix Install",
+    "id": "nix",
+    "version": "1.0.0",
+    "description": "Install Nix using the Determinate Nix Installer ",
+    "options": {},
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}
