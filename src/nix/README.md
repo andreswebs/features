@@ -1,6 +1,7 @@
-# Nix
 
-Install Nix using the Determintate Systems Installer.
+# Nix Install (nix)
+
+Install Nix using the Determinate Nix Installer 
 
 ## Example Usage
 
@@ -12,12 +13,15 @@ Install Nix using the Determintate Systems Installer.
 
 ## Options
 
-| Options Id | Description                                   | Type   | Default Value |
-| ---------- | --------------------------------------------- | ------ | ------------- |
-| greeting   | Select a pre-made greeting, or enter your own | string | hey           |
+| Options Id | Description | Type | Default Value |
+|-----|-----|-----|-----|
+
+
+See:
+
+<https://github.com/DeterminateSystems/nix-installer>
+
 
 ---
 
-_Note: This file was auto-generated from the
-[devcontainer-feature.json](https://github.com/devcontainers/feature-starter/blob/main/src/hello/devcontainer-feature.json).
-Add additional notes to a `NOTES.md`._
+_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/andreswebs/features/blob/main/src/nix/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._
