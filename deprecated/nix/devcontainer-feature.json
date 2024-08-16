@@ -2,6 +2,7 @@
     "name": "Nix Install",
     "id": "nix",
     "version": "1.0.0",
+    "deprecated": true,
     "description": "Install Nix using the Determinate Nix Installer ",
     "options": {},
     "installsAfter": [

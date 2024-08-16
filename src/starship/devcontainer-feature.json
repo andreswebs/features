@@ -1,0 +1,10 @@
+{
+    "name": "ZSH Starship",
+    "id": "zsh-starship",
+    "version": "0.0.1",
+    "description": "Install Starship and configure basic ZSH settings",
+    "options": {},
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}
