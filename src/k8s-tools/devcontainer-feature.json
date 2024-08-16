@@ -1,0 +1,10 @@
+{
+    "name": "k8s-tools",
+    "id": "k8s-tools",
+    "version": "0.0.1",
+    "description": "Installs a Kubernetes-oriented collections of tools",
+    "options": {},
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}
