@@ -9,6 +9,7 @@
       "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
     },
     "installsAfter": [
-        "ghcr.io/devcontainers/features/common-utils"
+        "ghcr.io/devcontainers/features/common-utils",
+        "ghcr.io/devcontainers/features/kubectl-helm-minikube"
     ]
 }
