@@ -76,14 +76,13 @@ install_kind() {
   local VERSION=$(gh_version "${TARBALL_URL}")
   local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
 
-  [ ! -f "${INSTALL_PATH}/${BIN_NAME}" ] && {
+  if ! command -v "${BIN_NAME}" &> /dev/null; then
     local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
     trap "cleanup ${TMP_DIR}" RETURN
-
     download "${DOWNLOAD_URL}" "${TMP_DIR}/${BIN_NAME}" && \
     install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
     echo "installed ${BIN_NAME} version ${VERSION}"
-  } || true
+  fi
 
 }
 
@@ -107,20 +106,20 @@ install_k9s() {
   local VERSION=$(gh_version "${TARBALL_URL}")
   local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
 
-  [ ! -f "${INSTALL_PATH}/${BIN_NAME}" ] && {
+  if ! command -v "${BIN_NAME}" &> /dev/null; then
     local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
     trap "cleanup ${TMP_DIR}" RETURN
 
     download "${DOWNLOAD_URL}" "${TMP_DIR}/${FILE_PATTERN}" && \
     extract_tar "${TMP_DIR}/${FILE_PATTERN}" "${TMP_DIR}" && \
-    [ -f "${TMP_DIR}/${BIN_NAME}" ] && {
+    if [ -f "${TMP_DIR}/${BIN_NAME}" ]; then
       install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
       echo "installed ${BIN_NAME} version ${VERSION}"
-    } || {
+    else
       err_log "error: ${BIN_NAME} not installed"
       exit 1
-    }
-  } || true
+    fi
+  fi
 
 }
 

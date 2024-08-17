@@ -5,7 +5,8 @@
     "description": "Installs a Kubernetes-oriented collections of tools",
     "options": {},
     "dependsOn": {
-      "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+      // "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+      "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
     },
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils"
