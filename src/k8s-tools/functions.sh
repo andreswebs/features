@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-TARGETARCH="${TARGETARCH:-arm64}"
-TARGETOS="${TARGETARCH:-linux}"
-INSTALL_PATH="${INSTALL_PATH:-${HOME}/.local/bin}"
+export TARGETARCH="${TARGETARCH:-amd64}"
+export TARGETOS="${TARGETOS:-linux}"
+export INSTALL_PATH="${INSTALL_PATH:-/usr/local/bin}"
 
 err_log() {
   >&2 echo "${1}"
@@ -43,13 +43,13 @@ gh_download_url() {
 }
 
 extract_tar() {
-  local TAR_FILE="${1}"
+  local TAR_FILE_PATH="${1}"
   local TARGET_DIR="${2}"
-  tar -xzf "${TAR_FILE}" --directory "${TARGET_DIR}"
+  tar -xzf "${TAR_FILE_PATH}" --directory "${TARGET_DIR}"
 }
 
 prepare_install() {
-  local INSTALL_PATH="${INSTALL_PATH:-${HOME}/.local/bin}"
+  local INSTALL_PATH="${INSTALL_PATH:-/usr/local/bin}"
   mkdir -p "${INSTALL_PATH}"
 }
 
@@ -57,7 +57,7 @@ download() {
   local DOWNLOAD_URL="${1}"
   local FILE_PATH="${2}"
   curl \
-    --silent
+    --silent \
     --location \
     --output "${FILE_PATH}" \
     "${DOWNLOAD_URL}"
@@ -74,25 +74,30 @@ install_kind() {
   local FILE_PATTERN="kind-${TARGETOS}-${TARGETARCH}"
   local TARBALL_URL=$(gh_tarball_url "${REPO}")
   local VERSION=$(gh_version "${TARBALL_URL}")
-  local DOWNLOAD_URL=$(gh_download_url "${REPO}" "${VERSION}" "${FILE_PATTERN}")
-  local TMP_DIR=$(mktemp -d -t "${BIN_NAME}")
-  trap "cleanup ${TMP_DIR}" RETURN
-  download "${DOWNLOAD_URL}" "${TMP_DIR}/${BIN_NAME}"
-  install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}"
-  echo "installed ${BIN_NAME} version ${VERSION}"
-}
+  local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
 
-install_helm() {
+  [ ! -f "${INSTALL_PATH}/${BIN_NAME}" ] && {
+    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+    trap "cleanup ${TMP_DIR}" RETURN
 
-}
-
-install_kubectl() {
+    download "${DOWNLOAD_URL}" "${TMP_DIR}/${BIN_NAME}" && \
+    install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
+    echo "installed ${BIN_NAME} version ${VERSION}"
+  } || true
 
 }
 
-install_skaffold() {
+# install_helm() {
 
-}
+# }
+
+# install_kubectl() {
+
+# }
+
+# install_skaffold() {
+
+# }
 
 install_k9s() {
   local REPO="derailed/k9s"
@@ -100,11 +105,22 @@ install_k9s() {
   local FILE_PATTERN="k9s_Linux_${TARGETARCH}.tar.gz"
   local TARBALL_URL=$(gh_tarball_url "${REPO}")
   local VERSION=$(gh_version "${TARBALL_URL}")
-  local DOWNLOAD_URL=$(gh_download_url "${REPO}" "${VERSION}" "${FILE_PATTERN}")
+  local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
 
-  echo "INSPECT:"
-  echo "Install: ${BIN_NAME} version ${VERSION}"
-  echo "Download URL: ${DOWNLOAD_URL}"
+  [ ! -f "${INSTALL_PATH}/${BIN_NAME}" ] && {
+    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+    trap "cleanup ${TMP_DIR}" RETURN
+
+    download "${DOWNLOAD_URL}" "${TMP_DIR}/${FILE_PATTERN}" && \
+    extract_tar "${TMP_DIR}/${FILE_PATTERN}" "${TMP_DIR}" && \
+    [ -f "${TMP_DIR}/${BIN_NAME}" ] && {
+      install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
+      echo "installed ${BIN_NAME} version ${VERSION}"
+    } || {
+      err_log "error: ${BIN_NAME} not installed"
+      exit 1
+    }
+  } || true
 
 }
 
@@ -120,3 +136,4 @@ export -f prepare_install
 export -f download
 export -f cleanup
 export -f install_kind
+export -f install_k9s
