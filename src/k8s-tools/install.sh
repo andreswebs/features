@@ -1,21 +1,28 @@
 #!/usr/bin/env bash
 
-architecture=$(dpkg --print-architecture)
-case "${architecture}" in
-	amd64) TARGETARCH="amd64" ;;
-	arm64) TARGETARCH="arm64" ;;
-	*)
-		echo "Machine architecture '${architecture}' is not supported. Please use an x86-64 or ARM64 machine."
-		exit 1
-esac
+set -o errexit
+set -o nounset
+set -o pipefail
 
-# kind
-# https://github.com/mpriscella/features/blob/main/src/kind/install.sh
-curl -L "https://github.com/kubernetes-sigs/kind/releases/download/latest/kind-linux-${TARGETARCH}" \
-	-o /usr/local/bin/kind
+SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+source "${SCRIPT_DIR}/functions.sh"
 
-chmod +x /usr/local/bin/kind
+main() {
 
+  architecture=$(dpkg --print-architecture)
+  case "${architecture}" in
+    amd64) TARGETARCH="amd64" ;;
+    arm64) TARGETARCH="arm64" ;;
+    *)
+      echo "Machine architecture '${architecture}' is not supported. Please use an x86-64 or ARM64 machine."
+      exit 1
+  esac
+
+  prereqs
+  install_kind
+  install_k9s
+
+}
 
 # helm
 
