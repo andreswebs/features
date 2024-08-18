@@ -19,10 +19,10 @@ main() {
 
   prereqs
   install_kind
-  install_k9s
-  install_helm
   install_kubectl
+  install_helm
   install_kustomize
+  install_k9s
   install_skaffold
 
 }
