@@ -2,10 +2,9 @@
     "name": "k8s-tools",
     "id": "k8s-tools",
     "version": "0.0.1",
-    "description": "Installs a Kubernetes-oriented collections of tools",
+    "description": "Installs a Kubernetes-oriented collection of tools",
     "options": {},
     "dependsOn": {
-      // "ghcr.io/devcontainers/features/docker-in-docker:2": {}
       "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
     },
     "installsAfter": [

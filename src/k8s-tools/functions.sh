@@ -69,16 +69,17 @@ cleanup() {
 }
 
 install_kind() {
-  local REPO="kubernetes-sigs/kind"
   local BIN_NAME="kind"
-  local FILE_PATTERN="kind-${TARGETOS}-${TARGETARCH}"
-  local TARBALL_URL=$(gh_tarball_url "${REPO}")
-  local VERSION=$(gh_version "${TARBALL_URL}")
-  local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
-
   if ! command -v "${BIN_NAME}" &> /dev/null; then
+    local REPO="kubernetes-sigs/kind"
+    local TARBALL_URL=$(gh_tarball_url "${REPO}")
+    local VERSION=$(gh_version "${TARBALL_URL}")
+    local FILE_PATTERN="kind-${TARGETOS}-${TARGETARCH}"
+    local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
     local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+
     trap "cleanup ${TMP_DIR}" RETURN
+
     download "${DOWNLOAD_URL}" "${TMP_DIR}/${BIN_NAME}" && \
     install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
     echo "installed ${BIN_NAME} version ${VERSION}"
@@ -86,11 +87,52 @@ install_kind() {
 
 }
 
-# install_helm() {
+install_kubectl() {
+  local BIN_NAME="kubectl"
+  if ! command -v "${BIN_NAME}" &> /dev/null; then
+    local VERSION=$(curl --location --silent https://dl.k8s.io/release/stable.txt)
+    local DOWNLOAD_URL="https://dl.k8s.io/release/${VERSION}/bin/${TARGETOS}/${TARGETARCH}/kubectl"
+    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
 
-# }
+    trap "cleanup ${TMP_DIR}" RETURN
 
-# install_kubectl() {
+    download "${DOWNLOAD_URL}" "${TMP_DIR}/${BIN_NAME}" && \
+
+    if [ -f "${TMP_DIR}/${BIN_NAME}" ]; then
+      install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
+      echo "installed ${BIN_NAME} version ${VERSION}"
+    else
+      err_log "error: ${BIN_NAME} not installed"
+      exit 1
+    fi
+  fi
+}
+
+install_helm() {
+  local BIN_NAME="helm"
+  if ! command -v "${BIN_NAME}" &> /dev/null; then
+    local REPO="helm/helm"
+    local TARBALL_URL=$(gh_tarball_url "${REPO}")
+    local VERSION=$(gh_version "${TARBALL_URL}")
+    local FILE_PATTERN="${BIN_NAME}-v${VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz"
+    local DOWNLOAD_URL="https://get.helm.sh/${FILE_PATTERN}"
+    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+
+    trap "cleanup ${TMP_DIR}" RETURN
+
+    download "${DOWNLOAD_URL}" "${TMP_DIR}/${FILE_PATTERN}" && \
+    extract_tar "${TMP_DIR}/${FILE_PATTERN}" "${TMP_DIR}" && \
+    if [ -f "${TMP_DIR}/${TARGETOS}-${TARGETARCH}/${BIN_NAME}" ]; then
+      install "${TMP_DIR}/${TARGETOS}-${TARGETARCH}/${BIN_NAME}" "${INSTALL_PATH}" && \
+      echo "installed ${BIN_NAME} version ${VERSION}"
+    else
+      err_log "error: ${BIN_NAME} not installed"
+      exit 1
+    fi
+  fi
+}
+
+# install_kustomize() {
 
 # }
 
@@ -99,15 +141,15 @@ install_kind() {
 # }
 
 install_k9s() {
-  local REPO="derailed/k9s"
   local BIN_NAME="k9s"
-  local FILE_PATTERN="k9s_Linux_${TARGETARCH}.tar.gz"
-  local TARBALL_URL=$(gh_tarball_url "${REPO}")
-  local VERSION=$(gh_version "${TARBALL_URL}")
-  local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
-
   if ! command -v "${BIN_NAME}" &> /dev/null; then
+    local REPO="derailed/k9s"
+    local FILE_PATTERN="k9s_Linux_${TARGETARCH}.tar.gz"
+    local TARBALL_URL=$(gh_tarball_url "${REPO}")
+    local VERSION=$(gh_version "${TARBALL_URL}")
+    local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
     local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+
     trap "cleanup ${TMP_DIR}" RETURN
 
     download "${DOWNLOAD_URL}" "${TMP_DIR}/${FILE_PATTERN}" && \
@@ -135,4 +177,7 @@ export -f prepare_install
 export -f download
 export -f cleanup
 export -f install_kind
+export -f install_kubectl
+export -f install_helm
 export -f install_k9s
+
