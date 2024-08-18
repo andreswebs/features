@@ -138,9 +138,11 @@ install_kustomize() {
     local REPO="kubernetes-sigs/kustomize"
     local TARBALL_URL=$(gh_tarball_url "${REPO}")
     local VERSION=$(gh_version "${TARBALL_URL}")
-    local FILE_PATTERN="${BIN_NAME}-v${VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz"
-    local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
+    local FILE_PATTERN="${BIN_NAME}_v${VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz"
+    local DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${BIN_NAME}/v${VERSION}/${FILE_PATTERN}"
     local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+
+  # https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz
 
     trap "cleanup ${TMP_DIR}" RETURN
 
@@ -221,4 +223,5 @@ export -f install_kind
 export -f install_kubectl
 export -f install_helm
 export -f install_k9s
-
+export -f install_kustomize
+export -f install_skaffold
