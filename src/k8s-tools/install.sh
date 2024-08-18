@@ -22,8 +22,8 @@ main() {
   install_k9s
   install_helm
   install_kubectl
-  # install_kustomize
-  # install_skaffold
+  install_kustomize
+  install_skaffold
 
 }
 

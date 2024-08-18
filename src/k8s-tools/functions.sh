@@ -132,13 +132,54 @@ install_helm() {
   fi
 }
 
-# install_kustomize() {
+install_kustomize() {
+  local BIN_NAME="kustomize"
+  if ! command -v "${BIN_NAME}" &> /dev/null; then
+    local REPO="kubernetes-sigs/kustomize"
+    local TARBALL_URL=$(gh_tarball_url "${REPO}")
+    local VERSION=$(gh_version "${TARBALL_URL}")
+    local FILE_PATTERN="${BIN_NAME}-v${VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz"
+    local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
+    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
 
-# }
+    trap "cleanup ${TMP_DIR}" RETURN
 
-# install_skaffold() {
+    download "${DOWNLOAD_URL}" "${TMP_DIR}/${FILE_PATTERN}" && \
+    extract_tar "${TMP_DIR}/${FILE_PATTERN}" "${TMP_DIR}" && \
+    if [ -f  "${TMP_DIR}/${BIN_NAME}" ]; then
+      install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
+      echo "installed ${BIN_NAME} version ${VERSION}"
+    else
+      err_log "error: ${BIN_NAME} not installed"
+      exit 1
+    fi
+  fi
 
-# }
+}
+
+install_skaffold() {
+  local BIN_NAME="skaffold"
+  if ! command -v "${BIN_NAME}" &> /dev/null; then
+    local REPO="GoogleContainerTools/skaffold"
+    local TARBALL_URL=$(gh_tarball_url "${REPO}")
+    local VERSION=$(gh_version "${TARBALL_URL}")
+    local FILE_PATTERN="${BIN_NAME}-${TARGETOS}-${TARGETARCH}"
+    local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
+    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+
+    trap "cleanup ${TMP_DIR}" RETURN
+
+    download "${DOWNLOAD_URL}" "${TMP_DIR}/${FILE_PATTERN}" && \
+    if [ -f "${TMP_DIR}/${FILE_PATTERN}" ]; then
+      install "${TMP_DIR}/${FILE_PATTERN}" "${INSTALL_PATH}/${BIN_NAME}" && \
+      echo "installed ${BIN_NAME} version ${VERSION}"
+    else
+      err_log "error: ${BIN_NAME} not installed"
+      exit 1
+    fi
+  fi
+
+}
 
 install_k9s() {
   local BIN_NAME="k9s"
