@@ -1,7 +1,7 @@
 
 # k8s-tools (k8s-tools)
 
-Installs a Kubernetes-oriented collections of tools
+Installs a Kubernetes-oriented collection of tools
 
 ## Example Usage
 
