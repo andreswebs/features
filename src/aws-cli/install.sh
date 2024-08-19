@@ -55,7 +55,7 @@ main() {
         "https://awscli.amazonaws.com/${FILE_PATTERN}" && \
     unzip -qq "${TMP_DIR}/${FILE_PATTERN}" -d "${TMP_DIR}"
 
-    cd "${X_WORKDIR}" || exit 1
+    cd "${TMP_DIR}" || exit 1
     aws/install
   fi
 
