@@ -1,8 +1,12 @@
 ## Install anywhere
 
+Optionally set the starship BIN_DIR (example):
+
 ```sh
-# optionally set the starship BIN_DIR (example):
-# export STARSHIP_BIN_DIR="${HOME}/.local/bin"
+export STARSHIP_BIN_DIR="${HOME}/.local/bin"
+```
+
+```sh
 curl -fsSL https://raw.githubusercontent.com/andreswebs/features/refs/heads/main/src/zsh-starship/install.sh | sh
 ```
 
