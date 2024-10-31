@@ -1,5 +1,9 @@
 #!/usr/bin/env sh
 
+# shellcheck disable=SC2016
+
+set -o errexit
+
 TARGET_HOME="${HOME}"
 
 if [ -n "${_REMOTE_USER_HOME}" ]; then
@@ -9,16 +13,18 @@ fi
 mkdir --parents "${TARGET_HOME}/.zsh"
 touch "${TARGET_HOME}/.zshrc"
 
-STARSHIP_BIN_DIR="${STARSHIP_BIN_DIR:-'/usr/local/bin'}"
-
-if ! command -v starship &> /dev/null; then
-  curl -fsSL https://starship.rs/install.sh | sh -s -- --yes --bin-dir "${STARSHIP_BIN_DIR}"
+if ! command -v starship > /dev/null 2>&1; then
+  if [ -n "${STARSHIP_BIN_DIR}" ]; then
+    export BIN_DIR="${STARSHIP_BIN_DIR}"
+  fi
+  curl -fsSL https://starship.rs/install.sh | sh -s -- --yes
+  unset BIN_DIR
 fi
 
 if ! grep -q 'eval "$(starship init zsh)"' "${TARGET_HOME}/.zshrc"; then
   echo >> "${TARGET_HOME}/.zshrc"
   cat << 'EOT' >> "${TARGET_HOME}/.zshrc"
-if command -v starship &> /dev/null; then
+if command -v starship > /dev/null 2>&1; then
   eval "$(starship init zsh)"
 fi
 EOT
