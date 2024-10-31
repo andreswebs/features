@@ -1,7 +1,12 @@
 #!/usr/bin/env sh
 
+mkdir --parents "${HOME}/.zsh"
+touch "${HOME}/.zshrc"
+
+STARSHIP_BIN_DIR="${STARSHIP_BIN_DIR:-/usr/local/bin}"
+
 if ! command -v starship &> /dev/null; then
-  curl -fsSL https://starship.rs/install.sh | sh -s -- --yes
+  curl -fsSL https://starship.rs/install.sh | sh -s -- --yes --bin-dir "${STARSHIP_BIN_DIR}"
 fi
 
 if ! grep -q 'eval "$(starship init zsh)"' "${HOME}/.zshrc"; then
