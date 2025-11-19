@@ -1,64 +1,103 @@
 #!/usr/bin/env bash
 # https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
 
-set -o errexit
-set -o pipefail
-set -o nounset
+set -o errexit -o nounset -o pipefail
 
-export TARGETOS="${TARGETOS:-linux}"
-export TARGETARCH="${TARGETARCH:-amd64}"
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
 
-err_log() {
-  >&2 echo "${1}"
+echo_stderr() {
+  echo "${*}" >&2
+}
+
+is_cmd_available() {
+  if ! command -v "${1}" &> /dev/null; then
+    return 1
+  fi
 }
 
 check_cmd() {
-  if ! command -v "${1}" &> /dev/null; then
-    err_log "error: ${1} command is missing; you must check how to install it"
+  local cmd="${1}"
+  if ! is_cmd_available "${cmd}"; then
+    echo_stderr "error: ${cmd} command is missing; you must check how to install it"
     exit 1
   fi
 }
 
 # making no assumptions
 prereqs() {
-  check_cmd curl
-  check_cmd unzip
+  local required=(
+    "curl"
+    "unzip"
+  )
+
+  missing=()
+
+  for cmd in "${required[@]}"; do
+    if ! is_cmd_available "${cmd}"; then
+      missing+=("${cmd}")
+    fi
+  done
+
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+      echo_stderr "error: the following required commands are missing; you must check how to install them:"
+      for missing_cmd in "${missing[@]}"; do
+          echo_stderr "  - ${missing_cmd}"
+      done
+      return 1
+  fi
+}
+
+download() {
+  local download_url="${1}"
+  local file_path="${2}"
+  curl \
+    --silent \
+    --fail \
+    --location \
+    --output "${file_path}" \
+    "${download_url}"
 }
 
 cleanup() {
-  local TARGET_DIR="${1}"
-  rm -rf "${TARGET_DIR}"
+  local target_dir="${1:-}"
+  if [ -n "${target_dir}" ]; then
+    rm -rf "${target_dir}"
+  fi
 }
 
 main() {
-  architecture=$(dpkg --print-architecture)
-  case "${architecture}" in
-    amd64) export TARGETARCH="amd64" ;;
-    arm64) export TARGETARCH="arm64" ;;
-    *)
-      echo "Machine architecture '${architecture}' is not supported. Please use an x86-64 or ARM64 machine."
-      exit 1
-  esac
+  local aws_arch="${ARCH}"
 
-  if ! command -v aws &> /dev/null; then
-    if [ "${TARGETARCH}" = "amd64" ]; then export AWS_ARCH="x86_64" ; fi
-    if [ "${TARGETARCH}" = "arm64" ]; then export AWS_ARCH="aarch64" ; fi
-    local TMP_DIR="$(mktemp -d -t awscliv2.XXXXXXX)"
-    local FILE_PATTERN="awscli-exe-${TARGETOS}-${AWS_ARCH}.zip"
-    trap "cleanup ${TMP_DIR}" RETURN
+  if ! is_cmd_available "aws"; then
+    prereqs
 
-    curl \
-        --fail \
-        --silent \
-        --location \
-        --output "${TMP_DIR}/${FILE_PATTERN}" \
-        "https://awscli.amazonaws.com/${FILE_PATTERN}" && \
-    unzip -qq "${TMP_DIR}/${FILE_PATTERN}" -d "${TMP_DIR}"
+    if [ "${ARCH}" = "amd64" ]; then aws_arch="x86_64" ; fi
+    if [ "${ARCH}" = "arm64" ]; then aws_arch="aarch64" ; fi
 
-    cd "${TMP_DIR}" || exit 1
+    case "${ARCH}" in
+      x86_64) ;;
+      aarch64) ;;
+      *)
+        echo_stderr "error: machine architecture '${aws_arch}' is not supported. Please use an x86-64 or ARM64 machine."
+        exit 1
+    esac
+
+    local tmp_dir
+    tmp_dir="$(mktemp -d)"
+    trap 'cleanup ${tmp_dir}' RETURN
+
+    local file_pattern="awscli-exe-${OS}-${aws_arch}.zip"
+
+    download "https://awscli.amazonaws.com/${file_pattern}" "${tmp_dir}/${file_pattern}" && \
+    unzip -qq "${tmp_dir}/${file_pattern}" -d "${tmp_dir}"
+
+    cd "${tmp_dir}" || exit 1
     aws/install
   fi
 
 }
 
-main
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main
+fi

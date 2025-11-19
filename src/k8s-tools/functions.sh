@@ -1,32 +1,51 @@
 #!/usr/bin/env bash
 
-export TARGETARCH="${TARGETARCH:-amd64}"
-export TARGETOS="${TARGETOS:-linux}"
-export INSTALL_PATH="${INSTALL_PATH:-/usr/local/bin}"
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || return 0
 
-err_log() {
-  >&2 echo "${1}"
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+INSTALL_PATH="${INSTALL_PATH:-${HOME}/.local/bin}"
+
+echo_stderr() {
+  echo "${*}" >&2
 }
 
-check_cmd() {
+is_cmd_available() {
   if ! command -v "${1}" &> /dev/null; then
-    err_log "error: ${1} command is missing; you must check how to install it"
-    exit 1
+    return 1
   fi
 }
 
 # making no assumptions
 prereqs() {
-  check_cmd curl
-  check_cmd jq
-  check_cmd tar
-  check_cmd install
-  check_cmd grep
+  local required=(
+    "curl"
+    "jq"
+    "tar"
+    "install"
+    "grep"
+  )
+
+  missing=()
+
+  for cmd in "${required[@]}"; do
+    if ! is_cmd_available "${cmd}"; then
+      missing+=("${cmd}")
+    fi
+  done
+
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+      echo_stderr "error: the following required commands are missing; you must check how to install them:"
+      for missing_cmd in "${missing[@]}"; do
+          echo_stderr "  - ${missing_cmd}"
+      done
+      return 1
+  fi
 }
 
 gh_tarball_url() {
-  local REPO="${1}"
-  curl --silent "https://api.github.com/repos/${REPO}/releases/latest" | jq -r .tarball_url
+  local repo="${1}"
+  curl --fail --silent --location "https://api.github.com/repos/${repo}/releases/latest" | jq -r .tarball_url
 }
 
 gh_version() {
@@ -35,124 +54,136 @@ gh_version() {
 }
 
 gh_download_url() {
-  local REPO="${1}"
-  local VERSION="${2}"
-  local FILE_NAME="${3}"
-  local download_url="https://github.com/${REPO}/releases/download/${VERSION}/${FILE_NAME}"
+  local repo="${1}"
+  local version="${2}"
+  local file_name="${3}"
+  local download_url="https://github.com/${repo}/releases/download/${version}/${file_name}"
   echo "${download_url}"
 }
 
 extract_tar() {
-  local TAR_FILE_PATH="${1}"
-  local TARGET_DIR="${2}"
-  tar -xzf "${TAR_FILE_PATH}" --directory "${TARGET_DIR}"
+  local tar_file_path="${1}"
+  local target_dir="${2}"
+  tar \
+    --extract \
+    --gzip \
+    --file "${tar_file_path}" \
+    --directory "${target_dir}"
 }
 
 prepare_install() {
-  local INSTALL_PATH="${INSTALL_PATH:-/usr/local/bin}"
-  mkdir -p "${INSTALL_PATH}"
+  local install_path="${INSTALL_PATH:-/usr/local/bin}"
+  mkdir -p "${install_path}"
 }
 
 download() {
-  local DOWNLOAD_URL="${1}"
-  local FILE_PATH="${2}"
+  local download_url="${1}"
+  local file_path="${2}"
   curl \
+    --fail \
     --silent \
     --location \
-    --output "${FILE_PATH}" \
-    "${DOWNLOAD_URL}"
+    --output "${file_path}" \
+    "${download_url}"
 }
 
 cleanup() {
-  local TARGET_DIR="${1}"
-  rm -rf "${TARGET_DIR}"
+  local target_dir="${1:-}"
+  if [ -n "${target_dir}" ]; then
+    rm -rf "${target_dir}"
+  fi
 }
 
 install_kind() {
-  local BIN_NAME="kind"
-  if ! command -v "${BIN_NAME}" &> /dev/null; then
-    local REPO="kubernetes-sigs/kind"
-    local TARBALL_URL=$(gh_tarball_url "${REPO}")
-    local VERSION=$(gh_version "${TARBALL_URL}")
-    local FILE_PATTERN="kind-${TARGETOS}-${TARGETARCH}"
-    local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
-    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+  local bin_name="kind"
+  if ! is_cmd_available "${bin_name}"; then
+    local repo tarball_url version file_pattern download_url tmp_dir
 
-    trap "cleanup ${TMP_DIR}" RETURN
+    repo="kubernetes-sigs/kind"
+    tarball_url=$(gh_tarball_url "${repo}")
+    version=$(gh_version "${tarball_url}")
+    file_pattern="kind-${OS}-${ARCH}"
+    download_url=$(gh_download_url "${repo}" "v${version}" "${file_pattern}")
+    tmp_dir=$(mktemp -d)
 
-    download "${DOWNLOAD_URL}" "${TMP_DIR}/${BIN_NAME}" && \
-    install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
-    echo "installed ${BIN_NAME} version ${VERSION}"
+    trap 'cleanup ${tmp_dir}' RETURN
+
+    download "${download_url}" "${tmp_dir}/${bin_name}" && \
+    install "${tmp_dir}/${bin_name}" "${INSTALL_PATH}" && \
+    echo_stderr "installed ${bin_name} version ${version}"
   fi
-
 }
 
 install_kubectl() {
-  local BIN_NAME="kubectl"
-  if ! command -v "${BIN_NAME}" &> /dev/null; then
-    local VERSION=$(curl --location --silent https://dl.k8s.io/release/stable.txt)
-    local DOWNLOAD_URL="https://dl.k8s.io/release/${VERSION}/bin/${TARGETOS}/${TARGETARCH}/kubectl"
-    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+  local bin_name="kubectl"
+  if ! is_cmd_available "${bin_name}"; then
+    local version download_url tmp_dir
 
-    trap "cleanup ${TMP_DIR}" RETURN
+    version=$(curl --fail --silent --location https://dl.k8s.io/release/stable.txt)
+    download_url="https://dl.k8s.io/release/${version}/bin/${OS}/${ARCH}/kubectl"
+    tmp_dir=$(mktemp -d)
 
-    download "${DOWNLOAD_URL}" "${TMP_DIR}/${BIN_NAME}" && \
+    trap 'cleanup ${tmp_dir}' RETURN
 
-    if [ -f "${TMP_DIR}/${BIN_NAME}" ]; then
-      install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
-      echo "installed ${BIN_NAME} version ${VERSION}"
+    download "${download_url}" "${tmp_dir}/${bin_name}" && \
+
+    if [ -f "${tmp_dir}/${bin_name}" ]; then
+      install "${tmp_dir}/${bin_name}" "${INSTALL_PATH}" && \
+      echo_stderr "installed ${bin_name} version ${version}"
     else
-      err_log "error: ${BIN_NAME} not installed"
+      echo_stderr "error: ${bin_name} not installed"
       exit 1
     fi
   fi
 }
 
 install_helm() {
-  local BIN_NAME="helm"
-  if ! command -v "${BIN_NAME}" &> /dev/null; then
-    local REPO="helm/helm"
-    local TARBALL_URL=$(gh_tarball_url "${REPO}")
-    local VERSION=$(gh_version "${TARBALL_URL}")
-    local FILE_PATTERN="${BIN_NAME}-v${VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz"
-    local DOWNLOAD_URL="https://get.helm.sh/${FILE_PATTERN}"
-    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+  local bin_name="helm"
+  if ! is_cmd_available "${bin_name}"; then
+    local repo tarball_url version file_pattern download_url tmp_dir
 
-    trap "cleanup ${TMP_DIR}" RETURN
+    repo="helm/helm"
+    tarball_url=$(gh_tarball_url "${repo}")
+    version=$(gh_version "${tarball_url}")
+    file_pattern="${bin_name}-v${version}-${OS}-${ARCH}.tar.gz"
+    download_url="https://get.helm.sh/${file_pattern}"
+    tmp_dir=$(mktemp -d)
 
-    download "${DOWNLOAD_URL}" "${TMP_DIR}/${FILE_PATTERN}" && \
-    extract_tar "${TMP_DIR}/${FILE_PATTERN}" "${TMP_DIR}" && \
-    if [ -f "${TMP_DIR}/${TARGETOS}-${TARGETARCH}/${BIN_NAME}" ]; then
-      install "${TMP_DIR}/${TARGETOS}-${TARGETARCH}/${BIN_NAME}" "${INSTALL_PATH}" && \
-      echo "installed ${BIN_NAME} version ${VERSION}"
+    trap 'cleanup ${tmp_dir}' RETURN
+
+    download "${download_url}" "${tmp_dir}/${file_pattern}" && \
+    extract_tar "${tmp_dir}/${file_pattern}" "${tmp_dir}" && \
+    if [ -f "${tmp_dir}/${OS}-${ARCH}/${bin_name}" ]; then
+      install "${tmp_dir}/${OS}-${ARCH}/${bin_name}" "${INSTALL_PATH}" && \
+      echo_stderr "installed ${bin_name} version ${version}"
     else
-      err_log "error: ${BIN_NAME} not installed"
+      echo_stderr "error: ${bin_name} not installed"
       exit 1
     fi
   fi
 }
 
 install_kustomize() {
-  local BIN_NAME="kustomize"
-  if ! command -v "${BIN_NAME}" &> /dev/null; then
-    local REPO="kubernetes-sigs/kustomize"
-    local TARBALL_URL=$(gh_tarball_url "${REPO}")
-    local VERSION=$(gh_version "${TARBALL_URL}")
-    local FILE_PATTERN="${BIN_NAME}_v${VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz"
-    local DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${BIN_NAME}/v${VERSION}/${FILE_PATTERN}"
-    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+  local bin_name="kustomize"
+  if ! is_cmd_available "${bin_name}"; then
+    local repo tarball_url version file_pattern download_url tmp_dir
 
-  # https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz
+    repo="kubernetes-sigs/kustomize"
+    tarball_url=$(gh_tarball_url "${repo}")
+    version=$(gh_version "${tarball_url}")
+    file_pattern="${bin_name}_v${version}_${OS}_${ARCH}.tar.gz"
+    download_url="https://github.com/${repo}/releases/download/${bin_name}/v${version}/${file_pattern}"
+    tmp_dir=$(mktemp -d)
 
-    trap "cleanup ${TMP_DIR}" RETURN
+    trap 'cleanup ${tmp_dir}' RETURN
 
-    download "${DOWNLOAD_URL}" "${TMP_DIR}/${FILE_PATTERN}" && \
-    extract_tar "${TMP_DIR}/${FILE_PATTERN}" "${TMP_DIR}" && \
-    if [ -f  "${TMP_DIR}/${BIN_NAME}" ]; then
-      install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
-      echo "installed ${BIN_NAME} version ${VERSION}"
+    download "${download_url}" "${tmp_dir}/${file_pattern}"
+    extract_tar "${tmp_dir}/${file_pattern}" "${tmp_dir}"
+    if [ -f  "${tmp_dir}/${bin_name}" ]; then
+      install "${tmp_dir}/${bin_name}" "${INSTALL_PATH}"
+      echo_stderr "installed ${bin_name} version ${version}"
     else
-      err_log "error: ${BIN_NAME} not installed"
+      echo_stderr "error: ${bin_name} not installed"
       exit 1
     fi
   fi
@@ -160,23 +191,25 @@ install_kustomize() {
 }
 
 install_skaffold() {
-  local BIN_NAME="skaffold"
-  if ! command -v "${BIN_NAME}" &> /dev/null; then
-    local REPO="GoogleContainerTools/skaffold"
-    local TARBALL_URL=$(gh_tarball_url "${REPO}")
-    local VERSION=$(gh_version "${TARBALL_URL}")
-    local FILE_PATTERN="${BIN_NAME}-${TARGETOS}-${TARGETARCH}"
-    local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
-    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+  local bin_name="skaffold"
+  if ! is_cmd_available "${bin_name}"; then
+    local repo tarball_url version file_pattern download_url tmp_dir
 
-    trap "cleanup ${TMP_DIR}" RETURN
+    repo="GoogleContainerTools/skaffold"
+    tarball_url=$(gh_tarball_url "${repo}")
+    version=$(gh_version "${tarball_url}")
+    file_pattern="${bin_name}-${OS}-${ARCH}"
+    download_url=$(gh_download_url "${repo}" "v${version}" "${file_pattern}")
+    tmp_dir=$(mktemp -d)
 
-    download "${DOWNLOAD_URL}" "${TMP_DIR}/${FILE_PATTERN}" && \
-    if [ -f "${TMP_DIR}/${FILE_PATTERN}" ]; then
-      install "${TMP_DIR}/${FILE_PATTERN}" "${INSTALL_PATH}/${BIN_NAME}" && \
-      echo "installed ${BIN_NAME} version ${VERSION}"
+    trap 'cleanup ${tmp_dir}' RETURN
+
+    download "${download_url}" "${tmp_dir}/${file_pattern}"
+    if [ -f "${tmp_dir}/${file_pattern}" ]; then
+      install "${tmp_dir}/${file_pattern}" "${INSTALL_PATH}/${bin_name}"
+      echo_stderr "installed ${bin_name} version ${version}"
     else
-      err_log "error: ${BIN_NAME} not installed"
+      echo_stderr "error: ${bin_name} not installed"
       exit 1
     fi
   fi
@@ -184,44 +217,28 @@ install_skaffold() {
 }
 
 install_k9s() {
-  local BIN_NAME="k9s"
-  if ! command -v "${BIN_NAME}" &> /dev/null; then
-    local REPO="derailed/k9s"
-    local FILE_PATTERN="k9s_Linux_${TARGETARCH}.tar.gz"
-    local TARBALL_URL=$(gh_tarball_url "${REPO}")
-    local VERSION=$(gh_version "${TARBALL_URL}")
-    local DOWNLOAD_URL=$(gh_download_url "${REPO}" "v${VERSION}" "${FILE_PATTERN}")
-    local TMP_DIR=$(mktemp -d -t "${BIN_NAME}.XXXXXXX")
+  local bin_name="k9s"
+  if ! is_cmd_available "${bin_name}"; then
+    local repo tarball_url version file_pattern download_url tmp_dir
 
-    trap "cleanup ${TMP_DIR}" RETURN
+    repo="derailed/k9s"
+    tarball_url=$(gh_tarball_url "${repo}")
+    version=$(gh_version "${tarball_url}")
+    file_pattern="k9s_Linux_${ARCH}.tar.gz"
+    download_url=$(gh_download_url "${repo}" "v${version}" "${file_pattern}")
+    tmp_dir=$(mktemp -d)
 
-    download "${DOWNLOAD_URL}" "${TMP_DIR}/${FILE_PATTERN}" && \
-    extract_tar "${TMP_DIR}/${FILE_PATTERN}" "${TMP_DIR}" && \
-    if [ -f "${TMP_DIR}/${BIN_NAME}" ]; then
-      install "${TMP_DIR}/${BIN_NAME}" "${INSTALL_PATH}" && \
-      echo "installed ${BIN_NAME} version ${VERSION}"
+    trap 'cleanup ${tmp_dir}' RETURN
+
+    download "${download_url}" "${tmp_dir}/${file_pattern}"
+    extract_tar "${tmp_dir}/${file_pattern}" "${tmp_dir}"
+    if [ -f "${tmp_dir}/${bin_name}" ]; then
+      install "${tmp_dir}/${bin_name}" "${INSTALL_PATH}"
+      echo_stderr "installed ${bin_name} version ${version}"
     else
-      err_log "error: ${BIN_NAME} not installed"
+      echo_stderr "error: ${bin_name} not installed"
       exit 1
     fi
   fi
 
 }
-
-
-export -f err_log
-export -f check_cmd
-export -f prereqs
-export -f gh_tarball_url
-export -f gh_version
-export -f gh_download_url
-export -f extract_tar
-export -f prepare_install
-export -f download
-export -f cleanup
-export -f install_kind
-export -f install_kubectl
-export -f install_helm
-export -f install_k9s
-export -f install_kustomize
-export -f install_skaffold
