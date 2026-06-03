@@ -1,8 +1,8 @@
 {
-  "name": "AWS CLI v2",
-  "id": "aws-cli",
+  "name": "Direnv",
+  "id": "direnv",
   "version": "0.0.1",
-  "description": "Install the AWS CLI v2",
+  "description": "Install direnv and configure shell hooks for bash and zsh",
   "options": {},
   "installsAfter": [
     "ghcr.io/devcontainers/features/common-utils"

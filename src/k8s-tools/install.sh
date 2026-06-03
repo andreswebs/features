@@ -8,25 +8,26 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${SCRIPT_DIR}/functions.sh"
 
 main() {
-  architecture=$(dpkg --print-architecture)
-  case "${architecture}" in
+    architecture=$(dpkg --print-architecture)
+    case "${architecture}" in
     amd64) export TARGETARCH="amd64" ;;
     arm64) export TARGETARCH="arm64" ;;
     *)
-      echo "Machine architecture '${architecture}' is not supported. Please use an x86-64 or ARM64 machine."
-      exit 1
-  esac
+        echo "Machine architecture '${architecture}' is not supported. Please use an x86-64 or ARM64 machine."
+        exit 1
+        ;;
+    esac
 
-  prereqs
-  install_kind
-  install_kubectl
-  install_helm
-  install_kustomize
-  install_k9s
-  install_skaffold
+    prereqs
+    install_kind
+    install_kubectl
+    install_helm
+    install_kustomize
+    install_k9s
+    install_skaffold
 
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main
+    main
 fi

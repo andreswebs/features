@@ -1,4 +1,3 @@
-
 # ZSH Starship (zsh-starship)
 
 Install Starship and configure basic ZSH settings
@@ -14,8 +13,7 @@ Install Starship and configure basic ZSH settings
 ## Options
 
 | Options Id | Description | Type | Default Value |
-|-----|-----|-----|-----|
-
+| ---------- | ----------- | ---- | ------------- |
 
 ## Install anywhere
 
@@ -33,7 +31,6 @@ curl -fsSL https://raw.githubusercontent.com/andreswebs/features/refs/heads/main
 
 <https://dev.to/krish_agarwal/setup-guide-for-zsh-in-github-codespaces-5152>
 
-
 ---
 
-_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/andreswebs/features/blob/main/src/zsh-starship/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._
+_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/andreswebs/features/blob/main/src/zsh-starship/devcontainer-feature.json). Add additional notes to a `NOTES.md`._
